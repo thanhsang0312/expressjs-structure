@@ -15,6 +15,7 @@ const authService = require("../services/auth.service");
  *             required:
  *               - username
  *               - password
+ *               - email
  *             properties:
  *               username:
  *                 type: string
@@ -22,6 +23,9 @@ const authService = require("../services/auth.service");
  *               password:
  *                 type: string
  *                 example: password123
+ *               email:
+ *                 type: string
+ *                 example: user@example.com
  *     responses:
  *       201:
  *         description: User registered successfully
@@ -39,33 +43,39 @@ const authService = require("../services/auth.service");
  *                       type: integer
  *                     username:
  *                       type: string
+ *                     email:
+ *                       type: string
+ *                     role:
+ *                       type: string
  *       400:
- *         description: Username already exists
+ *         description: Username or email already exists
  */
-const register = (req, res) => {
+const register = async (req, res) => {
   try {
-    const { username, password } = req.body;
+    const { username, password, email } = req.body;
 
     // Basic validation
-    if (!username || !password) {
-      return res.status(400).json({ error: 'Username and password are required' });
+    if (!username || !password || !email) {
+      return res.status(400).json({ error: 'Username, password, and email are required' });
     }
 
     if (password.length < 6) {
       return res.status(400).json({ error: 'Password must be at least 6 characters long' });
     }
 
-    const user = authService.createUser(username, password);
+    const user = await authService.createUser(username, password, email);
     res.status(201).json({
       message: 'User registered successfully',
       user: {
-        id: user.id,
+        id: user._id,
         username: user.username,
+        email: user.email,
+        role: user.role,
         createdAt: user.createdAt
       }
     });
   } catch (error) {
-    if (error.message === 'Username already exists') {
+    if (error.message === 'Username or email already exists') {
       res.status(400).json({ error: error.message });
     } else {
       res.status(500).json({ error: 'Internal server error' });
@@ -108,15 +118,27 @@ const register = (req, res) => {
  *       401:
  *         description: Invalid credentials
  */
-const login = (req, res) => {
-  const { username, password } = req.body;
-  const user = authService.findUserByUsername(username);
+const login = async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const user = await authService.findUserByUsername(username);
 
-  if (user && authService.validatePassword(password, user.password)) {
-    const token = authService.generateToken(user);
-    res.json({ token });
-  } else {
-    res.status(401).send("Invalid credentials!");
+    if (user && authService.validatePassword(password, user.password)) {
+      const token = authService.generateToken(user);
+      res.json({ 
+        token,
+        user: {
+          id: user._id,
+          username: user.username,
+          email: user.email,
+          role: user.role
+        }
+      });
+    } else {
+      res.status(401).json({ error: "Invalid credentials!" });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Internal server error' });
   }
 };
 

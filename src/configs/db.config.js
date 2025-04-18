@@ -1,6 +1,7 @@
 const env = process.env;
 const fs = require('fs');
-const db = {
+
+const mysqlConfig = {
     host: env.DB_HOST,
     user: env.DB_USER,
     password: env.DB_PASSWORD,
@@ -12,4 +13,12 @@ const db = {
     } : undefined
 };
 
-module.exports = db;
+const mongoConfig = {
+    url: env.MONGODB_URL || 'mongodb://localhost:27017',
+    database: env.MONGODB_DATABASE || 'programming_languages'
+};
+
+module.exports = {
+    mysql: mysqlConfig,
+    mongodb: mongoConfig
+};
